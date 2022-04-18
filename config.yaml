@@ -1,0 +1,14 @@
+# config.yaml
+SITE:
+  TITLE: Test Site
+
+SERVICE:
+  PORT: "5001"
+  MODE: "debug"
+
+DB:
+  HOST: "localhost"
+  PORT: "3306"
+  USERNAME: "admin"
+  PASWORD: "password"
+  NAME: "microservicedb"
