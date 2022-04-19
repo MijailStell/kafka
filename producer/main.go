@@ -8,7 +8,25 @@ import (
 	"os"
 
 	kafka "github.com/segmentio/kafka-go"
+	"github.com/spf13/viper"
 )
+
+func setupConfig() {
+	// Set the file name of the configurations file
+	viper.SetConfigName("config")
+
+	// Set the path to look for the configurations file
+	viper.AddConfigPath(".")
+
+	// Enable VIPER to read Environment Variables
+	viper.AutomaticEnv()
+
+	viper.SetConfigType("yml")
+
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Error reading config file, %s", err)
+	}
+}
 
 func producerHandler(kafkaWriter *kafka.Writer) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
@@ -38,9 +56,19 @@ func getKafkaWriter(kafkaURL, topic string) *kafka.Writer {
 }
 
 func main() {
-	// get kafka writer using environment variables.
-	kafkaURL := os.Getenv("kafkaURL")
-	topic := os.Getenv("topic")
+	setupConfig()
+	kafkaURL := ""
+	topic := ""
+	mode, ok := viper.Get("LOCAL").(string)
+	if ok && mode == "1" {
+		kafkaURL = viper.Get("KAFKA.URL").(string)
+		topic = viper.Get("KAFKA.TOPIC").(string)
+	} else {
+		// get kafka writer using environment variables.
+		kafkaURL = os.Getenv("kafkaURL")
+		topic = os.Getenv("topic")
+	}
+
 	kafkaWriter := getKafkaWriter(kafkaURL, topic)
 
 	defer kafkaWriter.Close()

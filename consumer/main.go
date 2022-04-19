@@ -8,7 +8,25 @@ import (
 	"strings"
 
 	kafka "github.com/segmentio/kafka-go"
+	"github.com/spf13/viper"
 )
+
+func setupConfig() {
+	// Set the file name of the configurations file
+	viper.SetConfigName("config")
+
+	// Set the path to look for the configurations file
+	viper.AddConfigPath(".")
+
+	// Enable VIPER to read Environment Variables
+	viper.AutomaticEnv()
+
+	viper.SetConfigType("yml")
+
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Error reading config file, %s", err)
+	}
+}
 
 func getKafkaReader(kafkaURL, topic, groupID string) *kafka.Reader {
 	brokers := strings.Split(kafkaURL, ",")
@@ -22,10 +40,21 @@ func getKafkaReader(kafkaURL, topic, groupID string) *kafka.Reader {
 }
 
 func main() {
-	// get kafka reader using environment variables.
-	kafkaURL := os.Getenv("kafkaURL")
-	topic := os.Getenv("topic")
-	groupID := os.Getenv("groupID")
+	setupConfig()
+	kafkaURL := ""
+	topic := ""
+	groupID := ""
+	mode, ok := viper.Get("LOCAL").(string)
+	if ok && mode == "1" {
+		kafkaURL = viper.Get("KAFKA.URL").(string)
+		topic = viper.Get("KAFKA.TOPIC").(string)
+		groupID = viper.Get("KAFKA.GROUPID").(string)
+	} else {
+		// get kafka writer using environment variables.
+		kafkaURL = os.Getenv("kafkaURL")
+		topic = os.Getenv("topic")
+		groupID = os.Getenv("groupID")
+	}
 
 	reader := getKafkaReader(kafkaURL, topic, groupID)
 

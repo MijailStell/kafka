@@ -1,0 +1,5 @@
+# config.yaml
+LOCAL: "1"
+KAFKA:
+  URL: "localhost:9092"
+  TOPIC: "topic1"
