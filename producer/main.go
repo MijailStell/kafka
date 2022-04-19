@@ -21,7 +21,6 @@ const (
 
 var (
 	kafkaURL = ""
-	topic    = ""
 	groupID  = ""
 )
 
@@ -39,6 +38,16 @@ func setupConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Printf("Error reading config file, %s", err)
+	}
+
+	mode, ok := viper.Get("LOCAL").(string)
+	if ok && mode == "1" {
+		kafkaURL = viper.Get("KAFKA.URL").(string)
+		groupID = viper.Get("KAFKA.GROUPID").(string)
+	} else {
+		// get kafka writer using environment variables.
+		kafkaURL = os.Getenv("kafkaURL")
+		groupID = os.Getenv("groupID")
 	}
 }
 
@@ -82,19 +91,7 @@ func searchDocumentEventHandler(kafkaWriter *kafka.Writer) func(http.ResponseWri
 
 func main() {
 	setupConfig()
-	kafkaURL := ""
-	topic := ""
-	mode, ok := viper.Get("LOCAL").(string)
-	if ok && mode == "1" {
-		kafkaURL = viper.Get("KAFKA.URL").(string)
-		topic = viper.Get("KAFKA.TOPIC").(string)
-	} else {
-		// get kafka writer using environment variables.
-		kafkaURL = os.Getenv("kafkaURL")
-		topic = os.Getenv("topic")
-	}
-
-	kafkaWriter := getKafkaWriter(kafkaURL, topic)
+	kafkaWriter := getKafkaWriter(kafkaURL, searchDocumentEvented)
 
 	defer kafkaWriter.Close()
 	go consumeSearchDocumentEvented()
@@ -109,22 +106,7 @@ func main() {
 }
 
 func consumeSearchDocumentEvented() {
-	kafkaURL := ""
-	topic := ""
-	groupID := ""
-	mode, ok := viper.Get("LOCAL").(string)
-	if ok && mode == "1" {
-		kafkaURL = viper.Get("KAFKA.URL").(string)
-		topic = viper.Get("KAFKA.TOPIC").(string)
-		groupID = viper.Get("KAFKA.GROUPID").(string)
-	} else {
-		// get kafka writer using environment variables.
-		kafkaURL = os.Getenv("kafkaURL")
-		topic = os.Getenv("topic")
-		groupID = os.Getenv("groupID")
-	}
-
-	reader := getKafkaReader(kafkaURL, topic, groupID)
+	reader := getKafkaReader(kafkaURL, searchDocumentEvented, groupID)
 
 	defer reader.Close()
 
@@ -140,16 +122,7 @@ func consumeSearchDocumentEvented() {
 }
 
 func publishFoundDocumentEvented() {
-	kafkaURL := ""
-	topic := foundDocumentEvented
-	mode, ok := viper.Get("LOCAL").(string)
-	if ok && mode == "1" {
-		kafkaURL = viper.Get("KAFKA.URL").(string)
-	} else {
-		// get kafka writer using environment variables.
-		kafkaURL = os.Getenv("kafkaURL")
-	}
-	writer := getKafkaWriter(kafkaURL, topic)
+	writer := getKafkaWriter(kafkaURL, foundDocumentEvented)
 	defer writer.Close()
 
 	fmt.Sprintf("start producing - %s", foundDocumentEvented)
@@ -163,25 +136,12 @@ func publishFoundDocumentEvented() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		fmt.Printf("produced at topic:%s = %s\n", topic, string(msg.Value))
+		fmt.Printf("produced at topic:%s = %s\n", foundDocumentEvented, string(msg.Value))
 	}
 }
 
 func consumeFoundDocumentEvented() {
-	kafkaURL := ""
-	topic := foundDocumentEvented
-	groupID := ""
-	mode, ok := viper.Get("LOCAL").(string)
-	if ok && mode == "1" {
-		kafkaURL = viper.Get("KAFKA.URL").(string)
-		groupID = viper.Get("KAFKA.GROUPID").(string)
-	} else {
-		// get kafka writer using environment variables.
-		kafkaURL = os.Getenv("kafkaURL")
-		groupID = os.Getenv("groupID")
-	}
-
-	reader := getKafkaReader(kafkaURL, topic, groupID)
+	reader := getKafkaReader(kafkaURL, foundDocumentEvented, groupID)
 
 	defer reader.Close()
 
