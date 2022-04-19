@@ -6,6 +6,7 @@ require github.com/segmentio/kafka-go v0.4.31
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.14.2 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
