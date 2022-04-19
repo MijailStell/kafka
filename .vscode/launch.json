@@ -16,7 +16,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "worker/worker.go"
+            "program": "consumer/consumer.go"
         }
     ]
 }
