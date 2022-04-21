@@ -14,6 +14,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Person struct {
+	Document string `json:"document"`
+}
+
 const (
 	searchDocumentEvented = "searchDocumentEvented"
 	foundDocumentEvented  = "foundDocumentEvented"
@@ -22,6 +26,8 @@ const (
 var (
 	kafkaURL = ""
 	groupID  = ""
+	Persons  []Person
+	channel  = make(chan string, 1000)
 )
 
 func setupConfig() {
@@ -49,6 +55,11 @@ func setupConfig() {
 		kafkaURL = os.Getenv("kafkaURL")
 		groupID = os.Getenv("groupID")
 	}
+
+	Persons = []Person{
+		Person{Document: "45531745"},
+		Person{Document: "45531746"},
+	}
 }
 
 func getKafkaWriter(kafkaURL, topic string) *kafka.Writer {
@@ -70,12 +81,17 @@ func getKafkaReader(kafkaURL, topic, groupID string) *kafka.Reader {
 	})
 }
 
-func searchDocumentEventHandler(kafkaWriter *kafka.Writer) func(http.ResponseWriter, *http.Request) {
+func searchDocumentEventHandler() func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(wrt http.ResponseWriter, req *http.Request) {
+
 		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			log.Fatalln(err)
 		}
+
+		kafkaWriter := getKafkaWriter(kafkaURL, searchDocumentEvented)
+
+		defer kafkaWriter.Close()
 		msg := kafka.Message{
 			Key:   []byte(fmt.Sprintf("address-%s", req.RemoteAddr)),
 			Value: body,
@@ -86,19 +102,25 @@ func searchDocumentEventHandler(kafkaWriter *kafka.Writer) func(http.ResponseWri
 			wrt.Write([]byte(err.Error()))
 			log.Fatalln(err)
 		}
+
+		consumeFoundDocumentEvented()
+
+		response := <-channel // receive from channel
+		fmt.Println(response)
+		wrt.Write([]byte(response))
 	})
 }
 
 func main() {
 	setupConfig()
-	kafkaWriter := getKafkaWriter(kafkaURL, searchDocumentEvented)
+	// kafkaWriter := getKafkaWriter(kafkaURL, searchDocumentEvented)
 
-	defer kafkaWriter.Close()
-	go consumeSearchDocumentEvented()
-	go consumeFoundDocumentEvented()
+	// defer kafkaWriter.Close()
+	// go consumeSearchDocumentEvented()
+	// go consumeFoundDocumentEvented()
 
 	// Add handle func for producer.
-	http.HandleFunc("/api/v1/account/searchDocumentEvent", searchDocumentEventHandler(kafkaWriter))
+	http.HandleFunc("/api/v1/account/searchDocumentEvent", searchDocumentEventHandler())
 
 	// Run the web server.
 	fmt.Println("start producer-api ... !!")
@@ -128,9 +150,10 @@ func publishFoundDocumentEvented() {
 	fmt.Sprintf("start producing - %s", foundDocumentEvented)
 
 	key := fmt.Sprintf("Key-%d", uuid.New())
+	data := fmt.Sprintf("Es Cliente-%d", uuid.New())
 	msg := kafka.Message{
 		Key:   []byte(key),
-		Value: []byte("Es Cliente"),
+		Value: []byte(data),
 	}
 	err := writer.WriteMessages(context.Background(), msg)
 	if err != nil {
@@ -146,11 +169,12 @@ func consumeFoundDocumentEvented() {
 	defer reader.Close()
 
 	fmt.Sprintf("start consuming - %s", foundDocumentEvented)
-	for {
-		m, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Fatalln(err)
-		}
-		fmt.Printf("consumed at topic:%v = %s\n", m.Topic, string(m.Value))
+	// for {
+	m, err := reader.ReadMessage(context.Background())
+	if err != nil {
+		log.Fatalln(err)
 	}
+	fmt.Printf("consumed at topic:%s = %s\n", m.Topic, string(m.Value))
+	channel <- string(m.Value) // send to c
+	// }
 }
