@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/google/uuid"
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/spf13/viper"
 )
@@ -92,12 +93,13 @@ func consumeSearchDocumentEvented() {
 
 	defer reader.Close()
 
+	fmt.Sprintf("start consuming - %s", searchDocumentEvented)
 	for {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			log.Fatalln(err)
 		}
-		log.Println("message at topic:", m.Topic, " = ", string(m.Value))
+		fmt.Printf("message at topic:%v = %s\n", m.Topic, string(m.Value))
 		var personItem Person
 		json.Unmarshal([]byte(string(m.Value)), &personItem)
 		publishFoundDocumentEvented(personItem)
@@ -108,6 +110,9 @@ func publishFoundDocumentEvented(personItem Person) {
 	writer := getKafkaWriter(kafkaURL, foundDocumentEvented)
 	defer writer.Close()
 
+	fmt.Sprintf("start producing - %s", foundDocumentEvented)
+
+	key := fmt.Sprintf("Key-%d", uuid.New())
 	data := fmt.Sprintf("%s - No es Cliente", personItem.Document)
 
 	for i := range Persons {
@@ -117,13 +122,13 @@ func publishFoundDocumentEvented(personItem Person) {
 		}
 	}
 	msg := kafka.Message{
-		Key:   []byte("B"),
+		Key:   []byte(key),
 		Value: []byte(data),
 	}
 	err := writer.WriteMessages(context.Background(), msg)
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		log.Println("produced at topic:", foundDocumentEvented, " = ", string(msg.Value))
+		fmt.Printf("produced at topic:%s = %s\n", foundDocumentEvented, string(msg.Value))
 	}
 }

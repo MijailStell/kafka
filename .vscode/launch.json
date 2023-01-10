@@ -18,5 +18,12 @@
             "mode": "auto",
             "program": "consumer/main.go"
         }
+        {
+            "name": "Launch Async",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "async/main.go"
+        }
     ]
 }

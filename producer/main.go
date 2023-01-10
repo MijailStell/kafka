@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/uuid"
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/spf13/viper"
 )
@@ -125,42 +124,6 @@ func main() {
 	// Run the web server.
 	fmt.Println("start producer-api ... !!")
 	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
-func consumeSearchDocumentEvented() {
-	reader := getKafkaReader(kafkaURL, searchDocumentEvented, groupID)
-
-	defer reader.Close()
-
-	fmt.Sprintf("start consuming - %s", searchDocumentEvented)
-	for {
-		m, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Fatalln(err)
-		}
-		fmt.Printf("message at topic:%v = %s\n", m.Topic, string(m.Value))
-		publishFoundDocumentEvented()
-	}
-}
-
-func publishFoundDocumentEvented() {
-	writer := getKafkaWriter(kafkaURL, foundDocumentEvented)
-	defer writer.Close()
-
-	fmt.Sprintf("start producing - %s", foundDocumentEvented)
-
-	key := fmt.Sprintf("Key-%d", uuid.New())
-	data := fmt.Sprintf("Es Cliente-%d", uuid.New())
-	msg := kafka.Message{
-		Key:   []byte(key),
-		Value: []byte(data),
-	}
-	err := writer.WriteMessages(context.Background(), msg)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Printf("produced at topic:%s = %s\n", foundDocumentEvented, string(msg.Value))
-	}
 }
 
 func consumeFoundDocumentEvented() {
